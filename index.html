@@ -3,52 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>終極通用版：跨領域連結性圖</title>
+    <title>跨領域連結性圖：終極優化版</title>
     <style>
         * { box-sizing: border-box; }
         body {
             font-family: '微軟正黑體', sans-serif;
             margin: 0; padding: 0;
-            background-color: #e9ecef;
+            background-color: #f0f2f5;
             display: flex; flex-direction: column; align-items: center;
             height: 100vh; width: 100vw;
-            overflow: hidden; /* 鎖定底層捲動 */
+            overflow: hidden; 
             touch-action: none; 
             user-select: none;
-            -webkit-user-select: none;
         }
 
-        /* 頂部操作區：響應式排列 */
+        /* 頂部控制列 */
         #ui-header {
             width: 100%;
             background: white; padding: 12px;
-            display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.15);
             z-index: 100;
         }
 
-        .control-group { display: flex; gap: 8px; flex: 1; min-width: 250px; }
-        #noteText { flex: 2; padding: 10px; font-size: 16px; border: 1px solid #ced4da; border-radius: 6px; }
+        .control-group { display: flex; gap: 8px; flex: 1; min-width: 280px; }
+        #noteText { flex: 2; padding: 12px; font-size: 16px; border: 1px solid #ced4da; border-radius: 6px; }
         #noteColor { flex: 1; padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ced4da;}
         
-        button { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; white-space: nowrap; font-size: 16px; transition: 0.2s;}
+        button { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; white-space: nowrap; font-size: 16px; transition: 0.2s;}
         button:active { transform: scale(0.95); }
-        .btn-add { background: #4dabf7; color: white; flex: 1;}
+        .btn-add { background: #4dabf7; color: white; flex: 1.5;}
         .btn-del { background: #fa5252; color: white; }
 
-        /* 核心舞台區：允許上下滑動 */
+        /* 舞台區 */
         #stage {
             flex: 1;
             width: 100%;
             display: flex;
-            justify-content: center; /* 讓畫布永遠水平置中 */
+            justify-content: center; 
             align-items: flex-start;
             padding: 20px 0;
-            overflow-y: auto; /* 手機版圖太長時可上下滑動 */
+            overflow-y: auto; 
             overflow-x: hidden;
         }
 
-        /* 動態包裝層：尺寸會隨 JS 即時改變，形成完美的邊界 */
         #canvas-wrapper {
             position: relative;
             background-color: white;
@@ -56,28 +54,48 @@
             overflow: hidden;
         }
 
-        /* 真實畫布層：固定比例 (A4 比例)，絕對不變形 */
         #canvas-box {
             position: absolute;
             top: 0; left: 0;
             width: 1000px; 
             height: 1414px; 
+            /* 注意：請確認資料夾中有此圖檔，名稱與副檔名需完全相同 */
             background-image: url('background.png'); 
-            /* 關鍵修正：contain 保證圖片原比例顯示，絕不拉伸壓扁 */
             background-size: contain; 
             background-position: top center;
             background-repeat: no-repeat;
-            /* 關鍵修正：從左上角為基準點進行縮放 */
             transform-origin: top left; 
+            --note-scale: 1; 
         }
 
-        /* 便利貼樣式 */
+        /* 便利貼樣式：調大尺寸與字體 */
         .note {
-            position: absolute; width: 95px; height: 95px;
-            display: flex; align-items: center; justify-content: center;
-            text-align: center; font-weight: bold; font-size: 16px;
-            border-radius: 6px; box-shadow: 3px 6px 15px rgba(0,0,0,0.3);
-            cursor: move; touch-action: none; z-index: 10;
+            position: absolute; 
+            width: 110px; /* 從 95px 調大至 110px */
+            height: 110px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 18px; /* 字體調大 */
+            border-radius: 6px; 
+            box-shadow: 3px 6px 15px rgba(0,0,0,0.3);
+            cursor: move; 
+            touch-action: none; 
+            z-index: 10;
+            transform: scale(var(--note-scale));
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+            padding: 5px;
+            overflow: hidden;
+            word-break: break-all;
+        }
+
+        .note.dragging {
+            transform: scale(calc(var(--note-scale) * 1.15));
+            box-shadow: 8px 15px 30px rgba(0,0,0,0.5);
+            z-index: 1000 !important;
         }
     </style>
 </head>
@@ -85,15 +103,15 @@
 
     <div id="ui-header">
         <div class="control-group">
-            <input type="text" id="noteText" placeholder="寫下想法 (例如：AI技術)">
+            <input type="text" id="noteText" placeholder="寫下想法 (例如：預設值)">
             <select id="noteColor">
                 <option value="#fff3bf">領域 A(黃)</option>
                 <option value="#d3f9d8">領域 B(綠)</option>
                 <option value="#ffe3e3">主題(紅)</option>
             </select>
         </div>
-        <div class="control-group" style="flex: 0.5;">
-            <button class="btn-add" onclick="addNote()">➕ 生成便利貼</button>
+        <div class="control-group" style="flex: 0.4;">
+            <button class="btn-add" onclick="addNote()">➕ 生成</button>
             <button class="btn-del" onclick="reset()">🗑️ 清空</button>
         </div>
     </div>
@@ -110,53 +128,52 @@
         const stage = document.getElementById('stage');
         let currentScale = 1;
 
-        // --- 終極自適應縮放引擎 ---
         function autoResize() {
-            // 取得目前螢幕可用空間 (扣掉邊距)
             const stageW = stage.clientWidth - 20; 
             const availableH = window.innerHeight - document.getElementById('ui-header').offsetHeight - 40;
 
-            // 基準解析度 (符合 A4 比例)
             const BASE_W = 1000;
             const BASE_H = 1414;
 
-            // 預設：以「寬度」為準進行滿版縮放 (手機模式)
             let scale = stageW / BASE_W;
 
-            // 如果是在電腦大螢幕上，且圖放太大會超過畫面高度，則改以「高度」為準縮放
             if (window.innerWidth > 768 && (BASE_H * scale) > availableH) {
                 scale = availableH / BASE_H;
             }
 
-            // 限制最大放大倍率，避免在 4K 螢幕上大得誇張
-            if (scale > 1.5) scale = 1.5;
+            if (scale > 1.2) scale = 1.2;
 
             currentScale = scale;
-
-            // 1. 縮放內部畫布
             canvas.style.transform = `scale(${currentScale})`;
             
-            // 2. 最重要的一步：同步改變外部 Wrapper 的實際實體尺寸！
-            // 這樣畫布就會完美置中，且不會有多餘的白邊或被切斷
             wrapper.style.width = `${BASE_W * currentScale}px`;
             wrapper.style.height = `${BASE_H * currentScale}px`;
+
+            // 逆向放大補償：確保便利貼在手機上看起來至少有一定的大小
+            const MIN_VISUAL_SCALE = 0.85; 
+            let noteScale = 1;
+            if (currentScale < MIN_VISUAL_SCALE) {
+                noteScale = MIN_VISUAL_SCALE / currentScale; 
+            }
+            canvas.style.setProperty('--note-scale', noteScale);
         }
 
         window.addEventListener('resize', autoResize);
-        // 啟動時執行一次校正
         autoResize(); 
 
         function addNote() {
-            const txt = document.getElementById('noteText').value || "空白想法";
+            const txt = document.getElementById('noteText').value || "點子";
             const col = document.getElementById('noteColor').value;
             const n = document.createElement('div');
             n.className = 'note';
             n.innerText = txt;
             n.style.backgroundColor = col;
             
-            // 預設生成在畫布中央偏上，學生不用找
-            n.style.left = '450px';
-            n.style.top = '250px';
+            // 隨機生成在畫布中上方，增加自然感
+            const randomX = 400 + (Math.random() * 100 - 50);
+            const randomY = 300 + (Math.random() * 100 - 50);
+            n.style.left = randomX + 'px';
+            n.style.top = randomY + 'px';
 
             bindEvents(n);
             canvas.appendChild(n);
@@ -164,20 +181,19 @@
         }
 
         function reset() {
-            if(confirm("確定要清空所有便利貼嗎？")) {
+            if(confirm("確定要清空畫布嗎？")) {
                 document.querySelectorAll('.note').forEach(n => n.remove());
             }
         }
 
-        // --- 無縫座標拖曳邏輯 ---
         function bindEvents(el) {
             let active = false;
             let startX, startY, initL, initT;
 
             el.addEventListener('pointerdown', (e) => {
                 active = true;
-                el.style.zIndex = 1000;
-                el.setPointerCapture(e.pointerId); // 鎖定觸控，防止畫面跟著滑動
+                el.classList.add('dragging');
+                el.setPointerCapture(e.pointerId); 
                 
                 startX = e.clientX;
                 startY = e.clientY;
@@ -187,7 +203,6 @@
 
             el.addEventListener('pointermove', (e) => {
                 if (!active) return;
-                // 數學核心：實際滑動距離 ÷ 目前縮放比例 = 便利貼應該移動的距離
                 let dx = (e.clientX - startX) / currentScale;
                 let dy = (e.clientY - startY) / currentScale;
                 el.style.left = (initL + dx) + 'px';
@@ -196,7 +211,7 @@
 
             el.addEventListener('pointerup', (e) => {
                 active = false;
-                el.style.zIndex = 10;
+                el.classList.remove('dragging');
                 el.releasePointerCapture(e.pointerId);
             });
         }
