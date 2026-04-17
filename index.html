@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>跨領域連結性圖：終極優化版</title>
+    <title>跨領域連結性圖：優化手機字體版</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -59,7 +59,6 @@
             top: 0; left: 0;
             width: 1000px; 
             height: 1414px; 
-            /* 注意：請確認資料夾中有此圖檔，名稱與副檔名需完全相同 */
             background-image: url('background.png'); 
             background-size: contain; 
             background-position: top center;
@@ -68,17 +67,17 @@
             --note-scale: 1; 
         }
 
-        /* 便利貼樣式：調大尺寸與字體 */
+        /* 便利貼樣式：再微調加大尺寸與字體 */
         .note {
             position: absolute; 
-            width: 110px; /* 從 95px 調大至 110px */
-            height: 110px; 
+            width: 115px; /* 從 110px 微調至 115px */
+            height: 115px; 
             display: flex; 
             align-items: center; 
             justify-content: center;
             text-align: center; 
             font-weight: bold; 
-            font-size: 18px; /* 字體調大 */
+            font-size: 19px; /* 字體微調至 19px */
             border-radius: 6px; 
             box-shadow: 3px 6px 15px rgba(0,0,0,0.3);
             cursor: move; 
@@ -87,7 +86,7 @@
             transform: scale(var(--note-scale));
             transform-origin: center center;
             transition: transform 0.1s ease-out;
-            padding: 5px;
+            padding: 6px;
             overflow: hidden;
             word-break: break-all;
         }
@@ -149,8 +148,8 @@
             wrapper.style.width = `${BASE_W * currentScale}px`;
             wrapper.style.height = `${BASE_H * currentScale}px`;
 
-            // 逆向放大補償：確保便利貼在手機上看起來至少有一定的大小
-            const MIN_VISUAL_SCALE = 0.85; 
+            // ✨ 逆向放大補償：將標準提高到 1.0，確保在手機上絕對不縮水
+            const MIN_VISUAL_SCALE = 1.0; 
             let noteScale = 1;
             if (currentScale < MIN_VISUAL_SCALE) {
                 noteScale = MIN_VISUAL_SCALE / currentScale; 
