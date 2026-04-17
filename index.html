@@ -3,101 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>行動版：跨領域連結性圖</title>
+    <title>全平台通用：跨領域連結性圖</title>
     <style>
         * { box-sizing: border-box; }
         body {
             font-family: '微軟正黑體', sans-serif;
             margin: 0; padding: 0;
-            background-color: #2c3e50; /* 行動版使用深色背景更顯色 */
+            background-color: #f0f2f5;
             display: flex; flex-direction: column; align-items: center;
-            height: 100vh; width: 100vw;
-            overflow: hidden; 
-            touch-action: none; 
+            /* 手機版允許上下捲動，電腦版則由縮放邏輯控制 */
+            overflow-x: hidden;
+            overflow-y: auto;
+            touch-action: pan-y;
             user-select: none;
         }
 
-        /* 手機版頂部操作區 */
-        #mobile-header {
+        /* 頂部操作區 - 響應式排版 */
+        #ui-header {
             width: 100%;
-            background: #ffffff;
-            padding: 10px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: white; padding: 10px;
+            display: flex; gap: 8px; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             z-index: 100;
+            flex-wrap: wrap; /* 手機自動換行 */
+            justify-content: center;
         }
 
-        #noteText { grid-column: span 2; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
-        select { padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
-        .btn-add { background: #6cacc5; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; }
-        .btn-del { width: 100%; grid-column: span 2; background: #e57373; color: white; border: none; border-radius: 5px; padding: 5px; font-size: 14px; margin-top: 5px; }
+        .input-group { display: flex; gap: 5px; flex-grow: 1; max-width: 600px; }
+        #noteText { flex: 2; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        #noteColor { flex: 1; padding: 10px; font-size: 16px; border-radius: 4px; }
+        
+        button { padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .btn-add { background: #6cacc5; color: white; }
+        .btn-del { background: #e57373; color: white; }
 
-        /* 手機版畫布容器 - 強制寬度 100% */
+        /* 核心包裝層：用來處理縮放 */
         #stage {
-            flex: 1;
-            width: 100vw;
+            width: 100%;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* 靠上對齊方便手指操作 */
-            padding-top: 15px;
+            align-items: flex-start;
+            padding: 20px 0;
         }
 
-        #canvas-mobile {
+        #canvas-box {
             position: relative;
-            width: 1000px; /* 原始設計寬度 */
-            height: 750px; /* 原始設計高度 */
+            /* 以直向圖比例為基準：寬 800, 高 1100 */
+            width: 800px; 
+            height: 1100px;
             background-color: white;
-            background-image: url('background.png');
+            background-image: url('background.png'); 
             background-size: 100% 100%;
             background-repeat: no-repeat;
-            transform-origin: top center; /* 從頂部中心點縮放 */
-            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+            transform-origin: top center;
         }
 
-        /* 便利貼加大，適合手指觸控 */
+        /* 便利貼樣式 */
         .note {
-            position: absolute; width: 95px; height: 95px;
+            position: absolute; width: 90px; height: 90px;
             display: flex; align-items: center; justify-content: center;
             text-align: center; font-weight: bold; font-size: 16px;
-            border-radius: 6px; box-shadow: 3px 5px 12px rgba(0,0,0,0.3);
-            touch-action: none; z-index: 10;
+            border-radius: 5px; box-shadow: 2px 4px 10px rgba(0,0,0,0.2);
+            cursor: move; touch-action: none; z-index: 10;
         }
     </style>
 </head>
 <body>
 
-    <div id="mobile-header">
-        <input type="text" id="noteText" placeholder="輸入想法 (如：符號學)">
-        <select id="noteColor">
-            <option value="#fcf4d9">黃色領域</option>
-            <option value="#d9f2e6">綠色領域</option>
-            <option value="#fce4ec">紅色主題</option>
-        </select>
-        <button class="btn-add" onclick="addNote()">➕ 生成便利貼</button>
-        <button class="btn-del" onclick="reset()">🗑️ 清空所有</button>
+    <div id="ui-header">
+        <div class="input-group">
+            <input type="text" id="noteText" placeholder="寫下點子...">
+            <select id="noteColor">
+                <option value="#fcf4d9">領域 A(黃)</option>
+                <option value="#d9f2e6">領域 B(綠)</option>
+                <option value="#fce4ec">主題(紅)</option>
+            </select>
+        </div>
+        <button class="btn-add" onclick="addNote()">➕ 生成</button>
+        <button class="btn-del" onclick="reset()">🗑️ 清空</button>
     </div>
 
     <div id="stage">
-        <div id="canvas-mobile"></div>
+        <div id="canvas-box"></div>
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas-mobile');
+        const canvas = document.getElementById('canvas-box');
         const stage = document.getElementById('stage');
-        let scaleVal = 1;
+        let currentScale = 1;
 
-        // --- 行動版強制滿寬縮放 ---
-        function resizeForMobile() {
+        // --- 全平台自動縮放邏輯 (智慧縮放不變形) ---
+        function autoResize() {
             const windowW = window.innerWidth;
-            // 行動版一律以螢幕寬度為基準縮放 (100% 滿寬)
-            scaleVal = windowW / 1000;
-            canvas.style.transform = `scale(${scaleVal})`;
+            const windowH = window.innerHeight - document.getElementById('ui-header').offsetHeight - 40;
+            
+            // 計算寬度縮放比與高度縮放比
+            const scaleX = windowW / 800;
+            const scaleY = windowH / 1100;
+
+            if (windowW > 800) {
+                // 電腦版：為了不爆框，取寬與高中較小的那個縮放比，並置中留白
+                currentScale = Math.min(scaleX, scaleY) * 0.9;
+            } else {
+                // 手機版：強制左右滿版 (100% 寬度)，高度則由捲軸上下滑動
+                currentScale = scaleX;
+            }
+
+            canvas.style.transform = `scale(${currentScale})`;
+            
+            // 重要：修正 stage 高度，避免下方留白過多或被切斷
+            stage.style.height = (1100 * currentScale + 40) + 'px';
         }
 
-        window.addEventListener('resize', resizeForMobile);
-        resizeForMobile();
+        window.addEventListener('resize', autoResize);
+        autoResize();
 
         function addNote() {
             const txt = document.getElementById('noteText').value || "想法";
@@ -107,11 +127,11 @@
             n.innerText = txt;
             n.style.backgroundColor = col;
             
-            // 隨機在畫布中上方生成，防止被鍵盤或控制列擋住
-            n.style.left = (300 + Math.random() * 400) + 'px';
-            n.style.top = (200 + Math.random() * 100) + 'px';
+            // 預設生成在畫布中心附近
+            n.style.left = '355px';
+            n.style.top = '400px';
 
-            bindTouchEvents(n);
+            bindEvents(n);
             canvas.appendChild(n);
             document.getElementById('noteText').value = "";
         }
@@ -120,8 +140,7 @@
             if(confirm("確定清空嗎？")) document.querySelectorAll('.note').forEach(n => n.remove());
         }
 
-        // --- 行動版觸控優化邏輯 ---
-        function bindTouchEvents(el) {
+        function bindEvents(el) {
             let active = false;
             let startX, startY, initL, initT;
 
@@ -138,9 +157,9 @@
 
             el.addEventListener('pointermove', (e) => {
                 if (!active) return;
-                // 使用行動版當前的 scaleVal 校正手指位移
-                let dx = (e.clientX - startX) / scaleVal;
-                let dy = (e.clientY - startY) / scaleVal;
+                // 座標修正：位移距離需除以縮放比例
+                let dx = (e.clientX - startX) / currentScale;
+                let dy = (e.clientY - startY) / currentScale;
                 el.style.left = (initL + dx) + 'px';
                 el.style.top = (initT + dy) + 'px';
             });
