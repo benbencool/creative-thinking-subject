@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數位實作：跨領域連結性圖</title>
+    <style>
+        body {
+            font-family: '微軟正黑體', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* 防止平板操作時不小心選取文字或拖動整個畫面 */
+            user-select: none;
+            touch-action: pan-y; 
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        /* 頂部控制面板 */
+        #control-panel {
+            background: #ffffff;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 2px solid #6cacc5;
+            z-index: 100;
+        }
+
+        /* 畫布區域 (海報底圖) */
+        #canvas-container {
+            position: relative;
+            width: 1000px; /* 畫布寬度，可依據您的圖檔比例微調 */
+            height: 750px; /* 畫布高度 */
+            background-color: #ffffff;
+            /* 【重要設定】這裡對應您的底圖名稱，請確保圖檔與本 HTML 放在同一個資料夾 */
+            background-image: url('background.png'); 
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden; /* 確保便利貼不會跑出畫布 */
+        }
+
+        /* 輸入框與按鈕樣式 */
+        .input-group { display: flex; align-items: center; gap: 10px; }
+        input[type="text"] { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; width: 220px; }
+        select { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+        
+        button {
+            background-color: #6cacc5; color: white; border: none;
+            padding: 10px 20px; font-size: 16px; border-radius: 5px;
+            cursor: pointer; font-weight: bold; transition: 0.2s;
+        }
+        button:hover { background-color: #558fa6; }
+        button.danger { background-color: #e57373; }
+        button.danger:hover { background-color: #d32f2f; }
+
+        /* 便利貼準備池 (生成後預設出現的地方) */
+        #note-pool {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            height: 120px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 2px dashed #999;
+            border-radius: 10px;
+            padding: 10px;
+            pointer-events: none; /* 讓池子背景不影響點擊 */
+        }
+        #note-pool::before {
+            content: "👇 便利貼生成區 👇";
+            color: #666;
+            font-weight: bold;
+            display: block;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* 數位便利貼樣式 */
+        .sticky-note {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            cursor: grab;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+            border-radius: 4px;
+            user-select: none;
+            /* 針對平板觸控的重要設定 */
+            touch-action: none; 
+            z-index: 10;
+        }
+
+        .sticky-note:active {
+            cursor: grabbing;
+            transform: scale(1.05); /* 拖曳時稍微放大 */
+            box-shadow: 4px 8px 15px rgba(0,0,0,0.4);
+            z-index: 50; /* 拖曳時顯示在最上層 */
+        }
+
+    </style>
+</head>
+<body>
+
+    <h2>📌 數位實作：跨領域連結地圖</h2>
+
+    <div id="control-panel">
+        <div class="input-group">
+            <label><b>1. 選擇類型：</b></label>
+            <select id="noteColor">
+                <option value="#fcf4d9">領域 A (黃色)</option>
+                <option value="#d9f2e6">領域 B (綠色)</option>
+                <option value="#fce4ec">主題/問題 (紅色)</option>
+                <option value="#ffffff">空白文字 (白色)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label><b>2. 寫入概念：</b></label>
+            <input type="text" id="noteText" placeholder="輸入想法 (如：符號學)">
+        </div>
+        <button onclick="createNote()">➕ 生成便利貼</button>
+        <button class="danger" onclick="clearAllNotes()">🗑️ 清空所有</button>
+    </div>
+
+    <div id="canvas-container">
+        <div id="note-pool"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas-container');
+        let noteCounter = 0;
+
+        // 生成便利貼函數
+        function createNote() {
+            const textInput = document.getElementById('noteText').value;
+            const color = document.getElementById('noteColor').value;
+            
+            // 如果沒輸入字，預設顯示空白符號
+            const text = textInput.trim() === "" ? "【空白】" : textInput;
+
+            const note = document.createElement('div');
+            note.classList.add('sticky-note');
+            note.innerText = text;
+            note.style.backgroundColor = color;
+            note.id = 'note-' + noteCounter++;
+
+            // 預設生成在左下角的「便利貼池」內 (加入一些隨機偏移避免完全重疊)
+            const offsetX = Math.random() * 50;
+            const offsetY = Math.random() * 30;
+            note.style.left = (40 + offsetX) + 'px';
+            note.style.top = (600 + offsetY) + 'px';
+
+            // 綁定拖曳事件 (支援滑鼠與平板觸控)
+            makeDraggable(note);
+
+            // 加入畫布
+            canvas.appendChild(note);
+
+            // 清空輸入框方便下次輸入
+            document.getElementById('noteText').value = '';
+        }
+
+        // 清空所有便利貼
+        function clearAllNotes() {
+            const notes = document.querySelectorAll('.sticky-note');
+            notes.forEach(note => note.remove());
+        }
+
+        // --- 核心：無重力拖曳邏輯 (Pointer Events 相容 PC 與 平板) ---
+        let activeNote = null;
+        let initialX, initialY;
+        let xOffset = 0, yOffset = 0;
+
+        function makeDraggable(element) {
+            element.addEventListener('pointerdown', dragStart);
+        }
+
+        function dragStart(e) {
+            // 確保點擊到的是便利貼本身
+            if (e.target.classList.contains('sticky-note')) {
+                activeNote = e.target;
+                
+                // 獲取目前的座標偏移量
+                const style = window.getComputedStyle(activeNote);
+                const matrix = new WebKitCSSMatrix(style.transform);
+                xOffset = matrix.m41;
+                yOffset = matrix.m42;
+
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+
+                // 綁定移動與釋放事件到 window，防止滑鼠滑太快跑出元素
+                window.addEventListener('pointermove', drag);
+                window.addEventListener('pointerup', dragEnd);
+                
+                // 確保拖動中的元素在最上層
+                activeNote.style.zIndex = 50; 
+            }
+        }
+
+        function drag(e) {
+            if (activeNote) {
+                e.preventDefault(); // 防止預設的滾動或選取行為
+                
+                const currentX = e.clientX - initialX;
+                const currentY = e.clientY - initialY;
+
+                // 使用 transform 進行高效移動
+                activeNote.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            }
+        }
+
+        function dragEnd(e) {
+            if (activeNote) {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+                
+                // 恢復預設層級
+                activeNote.style.zIndex = 10;
+                activeNote = null;
+
+                window.removeEventListener('pointermove', drag);
+                window.removeEventListener('pointerup', dragEnd);
+            }
+        }
+    </script>
+</body>
+</html>
