@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>跨領域連結性圖：優化手機字體版</title>
+    <title>跨領域連結性圖：視覺比例最佳化</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -67,17 +67,17 @@
             --note-scale: 1; 
         }
 
-        /* 便利貼樣式：再微調加大尺寸與字體 */
+        /* 便利貼樣式：黃金比例尺寸 */
         .note {
             position: absolute; 
-            width: 115px; /* 從 110px 微調至 115px */
-            height: 115px; 
+            width: 95px; /* 回調至 95px */
+            height: 95px; 
             display: flex; 
             align-items: center; 
             justify-content: center;
             text-align: center; 
             font-weight: bold; 
-            font-size: 19px; /* 字體微調至 19px */
+            font-size: 16px; /* 適合手機閱讀的標準大小 */
             border-radius: 6px; 
             box-shadow: 3px 6px 15px rgba(0,0,0,0.3);
             cursor: move; 
@@ -88,7 +88,7 @@
             transition: transform 0.1s ease-out;
             padding: 6px;
             overflow: hidden;
-            word-break: break-all;
+            word-break: break-word; /* 中文斷行優化 */
         }
 
         .note.dragging {
@@ -148,8 +148,8 @@
             wrapper.style.width = `${BASE_W * currentScale}px`;
             wrapper.style.height = `${BASE_H * currentScale}px`;
 
-            // ✨ 逆向放大補償：將標準提高到 1.0，確保在手機上絕對不縮水
-            const MIN_VISUAL_SCALE = 1.0; 
+            // ✨ 逆向放大補償微調：設定為 0.85，取得最佳平衡
+            const MIN_VISUAL_SCALE = 0.85; 
             let noteScale = 1;
             if (currentScale < MIN_VISUAL_SCALE) {
                 noteScale = MIN_VISUAL_SCALE / currentScale; 
@@ -168,9 +168,9 @@
             n.innerText = txt;
             n.style.backgroundColor = col;
             
-            // 隨機生成在畫布中上方，增加自然感
-            const randomX = 400 + (Math.random() * 100 - 50);
-            const randomY = 300 + (Math.random() * 100 - 50);
+            // 生成在畫布中上方，確保在視線範圍內
+            const randomX = 400 + (Math.random() * 80 - 40);
+            const randomY = 300 + (Math.random() * 80 - 40);
             n.style.left = randomX + 'px';
             n.style.top = randomY + 'px';
 
