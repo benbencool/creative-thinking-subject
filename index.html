@@ -5,187 +5,161 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>跨領域連結性圖</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             font-family: '微軟正黑體', sans-serif;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin: 0; padding: 0;
+            background-color: #f0f2f5;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; width: 100vw;
+            overflow: hidden; /* 防止整體網頁捲動 */
+            touch-action: none; 
             user-select: none;
-            /* 關鍵：防止手機瀏覽器預設的下拉重新整理與側滑翻頁 */
-            overscroll-behavior: none;
-            touch-action: none;
         }
 
-        h2 { color: #333; font-size: 1.2rem; margin: 10px 0; }
-
-        /* 控制面板：在手機上會自動換行 */
-        #control-panel {
-            background: #ffffff;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap; /* 手機自動換行 */
-            border: 2px solid #6cacc5;
-            width: 95%;
-            max-width: 400px;
+        /* 頂部控制列 - 自適應寬度 */
+        #ui-header {
+            width: 100%; max-width: 1000px;
+            background: white; padding: 10px;
+            display: flex; gap: 8px; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 100;
+            flex-wrap: wrap;
         }
 
-        .input-group { display: flex; align-items: center; gap: 5px; width: 100%; }
-        input[type="text"] { flex: 1; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
-        select { padding: 8px; font-size: 16px; border-radius: 4px; }
-        
-        button {
+        #noteText { flex: 2; min-width: 150px; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        select { flex: 1; padding: 8px; font-size: 16px; border-radius: 4px; }
+        button { padding: 8px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-add { background: #6cacc5; color: white; }
+        .btn-del { background: #e57373; color: white; }
+
+        /* 核心：畫布容器，維持比例 */
+        #stage {
             flex: 1;
-            background-color: #6cacc5; color: white; border: none;
-            padding: 10px; font-size: 16px; border-radius: 4px;
-            cursor: pointer; font-weight: bold;
-        }
-        button.danger { background-color: #e57373; }
-
-        /* 畫布容器：關鍵在於使用 transform-origin 讓它在小螢幕自動縮小 */
-        #canvas-wrapper {
             width: 100%;
-            overflow: hidden;
             display: flex;
             justify-content: center;
-            background-color: #ddd;
-            border-radius: 10px;
+            align-items: center;
+            padding: 15px;
+            background: #d1d4d9;
         }
 
-        #canvas-container {
+        #canvas-box {
             position: relative;
-            width: 1000px;
+            /* 固定原始設計寬高比例 1000:750 */
+            width: 1000px; 
             height: 750px;
-            background-color: #ffffff;
-            background-image: url('background.png'); 
+            background-color: white;
+            /* 這裡對應您的底圖名稱 */
+            background-image: url('background.png');
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
-            transform-origin: top left; /* 縮放起點 */
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transform-origin: center center;
         }
 
-        /* 便利貼在手機上稍微加大方便點擊 */
-        .sticky-note {
-            position: absolute;
-            width: 90px;
-            height: 90px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px;
-            box-shadow: 2px 4px 10px rgba(0,0,0,0.3);
-            border-radius: 5px;
-            touch-action: none; 
-            z-index: 10;
-        }
-
-        #note-pool {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            width: 250px;
-            height: 100px;
-            border: 2px dashed #999;
-            background: rgba(255,255,255,0.7);
-            pointer-events: none;
+        /* 便利貼樣式 */
+        .note {
+            position: absolute; width: 85px; height: 85px;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; font-weight: bold; font-size: 15px;
+            border-radius: 4px; box-shadow: 2px 4px 10px rgba(0,0,0,0.2);
+            cursor: move; touch-action: none; z-index: 10;
         }
     </style>
 </head>
 <body>
 
-    <h2>📌 數位實作：手機操作版</h2>
-
-    <div id="control-panel">
-        <div class="input-group">
-            <select id="noteColor">
-                <option value="#fcf4d9">領域 A (黃)</option>
-                <option value="#d9f2e6">領域 B (綠)</option>
-                <option value="#fce4ec">主題 (紅)</option>
-            </select>
-            <input type="text" id="noteText" placeholder="點子...">
-        </div>
-        <button onclick="createNote()">➕ 生成</button>
-        <button class="danger" onclick="clearAllNotes()">🗑️ 清除</button>
+    <div id="ui-header">
+        <input type="text" id="noteText" placeholder="寫下想法...">
+        <select id="noteColor">
+            <option value="#fcf4d9">領域 A (黃)</option>
+            <option value="#d9f2e6">領域 B (綠)</option>
+            <option value="#fce4ec">主題 (紅)</option>
+        </select>
+        <button class="btn-add" onclick="addNote()">➕ 生成</button>
+        <button class="btn-del" onclick="reset()">🗑️ 清空</button>
     </div>
 
-    <div id="canvas-wrapper">
-        <div id="canvas-container">
-            <div id="note-pool"></div>
-        </div>
+    <div id="stage">
+        <div id="canvas-box"></div>
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas-container');
-        const wrapper = document.getElementById('canvas-wrapper');
-        let noteCounter = 0;
+        const canvas = document.getElementById('canvas-box');
+        const stage = document.getElementById('stage');
+        let currentScale = 1;
 
-        // --- 自動縮放邏輯 ---
-        function resizeCanvas() {
-            const scale = wrapper.offsetWidth / 1000;
-            canvas.style.transform = `scale(${scale})`;
-            wrapper.style.height = (750 * scale) + 'px';
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        // --- 全平台自動縮放核心邏輯 (不再變扁) ---
+        function autoResize() {
+            const stageW = stage.clientWidth;
+            const stageH = stage.clientHeight;
+            
+            // 同時計算寬度與高度的縮放比，取「最小值」以確保完整顯示且不變形
+            const scaleX = stageW / 1000;
+            const scaleY = stageH / 750;
+            currentScale = Math.min(scaleX, scaleY);
+            
+            // 限制電腦版最大縮放不超過 1.2，避免太巨大
+            if (currentScale > 1.2) currentScale = 1.2;
 
-        function createNote() {
-            const textInput = document.getElementById('noteText').value;
-            const color = document.getElementById('noteColor').value;
-            const text = textInput.trim() === "" ? "空白" : textInput;
-
-            const note = document.createElement('div');
-            note.classList.add('sticky-note');
-            note.innerText = text;
-            note.style.backgroundColor = color;
-            note.style.left = (20 + Math.random() * 50) + 'px';
-            note.style.top = (620 + Math.random() * 30) + 'px';
-
-            makeDraggable(note);
-            canvas.appendChild(note);
-            document.getElementById('noteText').value = '';
+            canvas.style.transform = `scale(${currentScale})`;
         }
 
-        function clearAllNotes() {
-            document.querySelectorAll('.sticky-note').forEach(n => n.remove());
+        window.addEventListener('resize', autoResize);
+        autoResize(); // 初始化
+
+        function addNote() {
+            const txt = document.getElementById('noteText').value || "空白";
+            const col = document.getElementById('noteColor').value;
+            const n = document.createElement('div');
+            n.className = 'note';
+            n.innerText = txt;
+            n.style.backgroundColor = col;
+            
+            // 預設出現在畫布中心
+            n.style.left = '450px';
+            n.style.top = '330px';
+
+            bindEvents(n);
+            canvas.appendChild(n);
+            document.getElementById('noteText').value = "";
         }
 
-        // --- 觸控移動邏輯 ---
-        function makeDraggable(el) {
-            el.addEventListener('pointerdown', function(e) {
-                const note = e.target;
-                const rect = canvas.getBoundingClientRect();
-                const scale = rect.width / 1000;
+        function reset() {
+            if(confirm("確定清空所有便利貼嗎？")) document.querySelectorAll('.note').forEach(n => n.remove());
+        }
+
+        // --- 拖曳邏輯：支援 PC 與 手機同步修正座標 ---
+        function bindEvents(el) {
+            let active = false;
+            let startX, startY, initL, initT;
+
+            el.addEventListener('pointerdown', (e) => {
+                active = true;
+                el.style.zIndex = 1000;
+                el.setPointerCapture(e.pointerId); // 鎖定點擊，防止手機滑出
                 
-                // 取得點擊位置相對於畫布縮放後的座標
-                let startX = e.clientX;
-                let startY = e.clientY;
-                let initialLeft = note.offsetLeft;
-                let initialTop = note.offsetTop;
+                startX = e.clientX;
+                startY = e.clientY;
+                initL = el.offsetLeft;
+                initT = el.offsetTop;
+            });
 
-                function onMove(ev) {
-                    // 關鍵：移動距離也要除以縮放比例，否則便利貼會跑得比手指快
-                    let dx = (ev.clientX - startX) / scale;
-                    let dy = (ev.clientY - startY) / scale;
-                    note.style.left = (initialLeft + dx) + 'px';
-                    note.style.top = (initialTop + dy) + 'px';
-                }
+            el.addEventListener('pointermove', (e) => {
+                if (!active) return;
+                // 關鍵：位移距離必須依照目前的 currentScale 進行除法修正，手指跟便利貼才會同步
+                let dx = (e.clientX - startX) / currentScale;
+                let dy = (e.clientY - startY) / currentScale;
+                el.style.left = (initL + dx) + 'px';
+                el.style.top = (initT + dy) + 'px';
+            });
 
-                function onUp() {
-                    window.removeEventListener('pointermove', onMove);
-                    window.removeEventListener('pointerup', onUp);
-                }
-
-                window.addEventListener('pointermove', onMove);
-                window.addEventListener('pointerup', onUp);
+            el.addEventListener('pointerup', (e) => {
+                active = false;
+                el.style.zIndex = 10;
+                el.releasePointerCapture(e.pointerId);
             });
         }
     </script>
